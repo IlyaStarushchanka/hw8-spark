@@ -2,6 +2,7 @@ package com.epam.bigdata.entity;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by Ilya_Starushchanka on 10/4/2016.
