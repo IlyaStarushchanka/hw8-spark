@@ -39,8 +39,7 @@ public class SparkApp {
                 .builder()
                 .appName("JavaWordCount")
                 .getOrCreate();
-
-        JavaRDD<LogsObject> logsRDD = spark.read().format("txt").text(args[0]).javaRDD().map(new Function<String, LogsObject>() {
+        JavaRDD<LogsObject> logsRDD = spark.read().textFile(args[0]).javaRDD().map(new Function<String, LogsObject>() {
             @Override
             public LogsObject call(String line) throws Exception {
                 String[] parts = line.split("\\s+");
