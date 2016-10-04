@@ -4,6 +4,7 @@ import com.epam.bigdata.entity.CustomCityDateEntity;
 import com.epam.bigdata.entity.LogsEntity;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SparkSession;
@@ -35,7 +36,9 @@ public class SparkApp {
                 .getOrCreate();
 
         //TAGS
-        JavaRDD<String> tagsRDD = spark.read().textFile(args[1]).javaRDD();
+        Dataset<String> dataTags = spark.read().textFile(args[1]);
+        String headerTags = dataTags.first();
+        JavaRDD<String> tagsRDD =dataTags.filter(x -> !x.equals(headerTags)).javaRDD();
         JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(new PairFunction<String, Long, List<String>>() {
             public Tuple2<Long, List<String>> call(String line) {
                 String[] parts = line.split("\\s+");
@@ -45,7 +48,9 @@ public class SparkApp {
         Map<Long, List<String>> tagsMap = tagsIdsPairs.collectAsMap();
 
         //CITIES
-        JavaRDD<String> citiesRDD = spark.read().textFile(args[2]).javaRDD();
+        Dataset<String> dataCities = spark.read().textFile(args[2]);
+        String headerCities = dataCities.first();
+        JavaRDD<String> citiesRDD =dataCities.filter(x -> !x.equals(headerCities)).javaRDD();
         JavaPairRDD<Integer, String> citiesIdsPairs = citiesRDD.mapToPair(new PairFunction<String, Integer, String>() {
             public Tuple2<Integer, String> call(String line) {
                 String[] parts = line.split("\\s+");
@@ -89,7 +94,6 @@ public class SparkApp {
                 return i1;
             }
             });
-
 
         List<Tuple2<CustomCityDateEntity, Set<String>>> output = dayCityTagsPairs.collect();
         for (Tuple2<CustomCityDateEntity,Set<String>> tuple : output) {
