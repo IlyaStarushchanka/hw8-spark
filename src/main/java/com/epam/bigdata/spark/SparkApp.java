@@ -57,6 +57,12 @@ public class SparkApp {
             }
         });
 
+        Encoder<LogsObject> logEnc = Encoders.bean(LogsObject.class);
+
+        Dataset<LogsObject> df = spark.createDataset(logsRDD.rdd(), logEnc);
+
+        df.limit(10).show();
+
         /*JavaRDD<String> lines = spark.read().text(args[0]).javaRDD();
 
         JavaRDD<String> words = lines.flatMap(new FlatMapFunction<String, String>() {
