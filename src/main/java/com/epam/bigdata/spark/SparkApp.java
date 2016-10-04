@@ -42,6 +42,7 @@ public class SparkApp {
         JavaRDD<LogsObject> logsRDD = spark.read().textFile(args[0]).javaRDD().map(new Function<String, LogsObject>() {
             @Override
             public LogsObject call(String line) throws Exception {
+                System.out.println(line);
                 String[] parts = line.split("\\s+");
 
                 LogsObject logsObject = new LogsObject();
