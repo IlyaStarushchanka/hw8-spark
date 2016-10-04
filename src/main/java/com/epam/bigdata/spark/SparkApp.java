@@ -46,7 +46,7 @@ public class SparkApp {
                 String[] parts = line.split("\\s+");
 
                 LogsObject logsObject = new LogsObject();
-                logsObject.setUserTagsId(Integer.parseInt(parts[parts.length-2]));
+                logsObject.setUserTagsId(Long.parseLong(parts[parts.length-2]));
                 logsObject.setCityId(Integer.parseInt(parts[parts.length-15]));
 
                 SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");

@@ -8,7 +8,7 @@ import java.util.Date;
 public class LogsObject {
 
     private Date date;
-    private int userTagsId;
+    private long userTagsId;
     private long cityId;
 
 
@@ -20,11 +20,11 @@ public class LogsObject {
         this.date = time;
     }
 
-    public int getUserTagsId() {
+    public long getUserTagsId() {
         return userTagsId;
     }
 
-    public void setUserTagsId(int userTagsId) {
+    public void setUserTagsId(long userTagsId) {
         this.userTagsId = userTagsId;
     }
 
