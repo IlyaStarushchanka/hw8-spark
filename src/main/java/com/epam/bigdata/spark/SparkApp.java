@@ -1,26 +1,21 @@
 package com.epam.bigdata.spark;
 
-import com.epam.bigdata.entity.LogsObject;
+import com.epam.bigdata.entity.LogsEntity;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SparkSession;
-import scala.Tuple2;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
+import scala.Tuple2;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 /**
  * Created by Ilya_Starushchanka on 10/3/2016.
@@ -30,7 +25,7 @@ public class SparkApp {
 
     public static void main(String[] args) throws Exception {
 
-        if (args.length < 1) {
+        if (args.length < 3) {
             System.err.println("Usage: JavaWordCount <file>");
             System.exit(1);
         }
@@ -39,28 +34,53 @@ public class SparkApp {
                 .builder()
                 .appName("JavaWordCount")
                 .getOrCreate();
-        JavaRDD<LogsObject> logsRDD = spark.read().textFile(args[0]).javaRDD().map(new Function<String, LogsObject>() {
+
+        //TAGS
+        JavaRDD<String> tagsRDD = spark.read().textFile(args[1]).javaRDD();
+        JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(new PairFunction<String, Long, List<String>>() {
+            public Tuple2<Long, List<String>> call(String line) {
+                String[] parts = line.split("\\s+");
+                return new Tuple2<Long, List<String>>(Long.parseLong(parts[0]), Arrays.asList(parts[1].split(",")));
+            }
+        });
+        Map<Long, List<String>> tagsMap = tagsIdsPairs.collectAsMap();
+
+        //CITIES
+        JavaRDD<String> citiesRDD = spark.read().textFile(args[2]).javaRDD();
+        JavaPairRDD<Integer, String> citiesIdsPairs = citiesRDD.mapToPair(new PairFunction<String, Integer, String>() {
+            public Tuple2<Integer, String> call(String line) {
+                String[] parts = line.split("\\s+");
+                return new Tuple2<Integer, String>(Integer.parseInt(parts[0]), parts[1]);
+            }
+        });
+        Map<Integer, String> citiesMap = citiesIdsPairs.collectAsMap();
+
+        JavaRDD<LogsEntity> logsRDD = spark.read().textFile(args[0]).javaRDD().map(new Function<String, LogsEntity>() {
             @Override
-            public LogsObject call(String line) throws Exception {
+            public LogsEntity call(String line) throws Exception {
                 String[] parts = line.split("\\s+");
 
-                LogsObject logsObject = new LogsObject();
-                logsObject.setUserTagsId(Long.parseLong(parts[parts.length-2]));
-                logsObject.setCityId(Integer.parseInt(parts[parts.length-15]));
+                LogsEntity logsEntity = new LogsEntity();
 
-                SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
-                String dateInString = parts[1].substring(0,8);
-                Date date = formatter.parse(dateInString);
-                logsObject.setDate(date);
-                return logsObject;
+                List<String> tagsList = tagsMap.get(Long.parseLong(parts[parts.length - 2]));
+                logsEntity.setTags(tagsList);
+
+                String city = citiesMap.get(Integer.parseInt(parts[parts.length - 15]));
+                logsEntity.setCity(city);
+
+                String dateInString = parts[1].substring(0, 8);
+                logsEntity.setDate(dateInString);
+                return logsEntity;
             }
         });
 
-        Encoder<LogsObject> logEnc = Encoders.bean(LogsObject.class);
 
-        Dataset<LogsObject> df = spark.createDataset(logsRDD.rdd(), logEnc);
+        Encoder<LogsEntity> logsEncoder = Encoders.bean(LogsEntity.class);
 
-        df.limit(10).show();
+        Dataset<LogsEntity> logsDataSet = spark.createDataset(logsRDD.rdd(), logsEncoder);
+
+
+        logsDataSet.show();
 
         /*JavaRDD<String> lines = spark.read().text(args[0]).javaRDD();
 
