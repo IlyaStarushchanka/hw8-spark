@@ -180,7 +180,9 @@ public class SparkApp {
         });
 
         tagCityDatePairs.collect().forEach(tuple -> {
-            System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount());
+            if (tuple._1.getCity().equals(UNKNOWN)) {
+                System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount());
+            }
         });
 
 
