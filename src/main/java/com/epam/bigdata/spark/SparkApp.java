@@ -1,7 +1,13 @@
 package com.epam.bigdata.spark;
 
 import com.epam.bigdata.entity.CustomCityDateEntity;
+import com.epam.bigdata.entity.EventInfoEntity;
+import com.epam.bigdata.entity.EventsTagEntity;
 import com.epam.bigdata.entity.LogsEntity;
+import com.restfb.*;
+import com.restfb.types.Event;
+import com.restfb.types.Location;
+import com.restfb.types.Place;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -13,15 +19,26 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
 import scala.Tuple2;
+import java.util.Optional;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
+
+
 /**
  * Created by Ilya_Starushchanka on 10/3/2016.
  */
 public class SparkApp {
+
+    private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
+    private static final String TOKEN = "EAACEdEose0cBAN4pfOZAqLyza99JROLyDQkR8IVGP2jeuWpMkHegeh5T5cK4qcKIsegW07f4835sUuEBSZBoPtuRHpcSJduikVfp7NZA1TtZAjgTjTUP5yCC8xY4wrDMHlIitIHODW6dhk0dTh9GQqTajI5Dgi08YR1ZCPY7ZAYQZDZD";
+    private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
+    private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+    private static final String DEFAULT_DATE = "2000-01-01";
+
 
     public static void main(String[] args) throws Exception {
 
@@ -35,16 +52,22 @@ public class SparkApp {
                 .appName("JavaWordCount")
                 .getOrCreate();
 
+        //TASK 1 ---------------------------------------------------------------------------------------------------------
+
         //TAGS
         Dataset<String> dataTags = spark.read().textFile(args[1]);
         String headerTags = dataTags.first();
         JavaRDD<String> tagsRDD =dataTags.filter(x -> !x.equals(headerTags)).javaRDD();
-        JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(new PairFunction<String, Long, List<String>>() {
+        JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(line -> {
+            String[] parts = line.split("\\s+");
+            return new Tuple2<>(Long.parseLong(parts[0]), Arrays.asList(parts[1].split(",")));
+        });
+        /*JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(new PairFunction<String, Long, List<String>>() {
             public Tuple2<Long, List<String>> call(String line) {
                 String[] parts = line.split("\\s+");
                 return new Tuple2<Long, List<String>>(Long.parseLong(parts[0]), Arrays.asList(parts[1].split(",")));
             }
-        });
+        });*/
         Map<Long, List<String>> tagsMap = tagsIdsPairs.collectAsMap();
 
         //CITIES
@@ -102,6 +125,48 @@ public class SparkApp {
                 System.out.println("Tag : " + tag);
             }
         }
+
+
+        //TASK 2 -------------------------------------------------------------------------------
+
+        JavaRDD<String> uniqueTags = logsRDD
+                .flatMap(logsEntity -> logsEntity.getTags().iterator())
+                .distinct();
+
+        JavaRDD<EventsTagEntity> allEventsTagEntity = uniqueTags
+                .map(tag -> {
+                    Connection<Event> eventConnections = facebookClient.fetchConnection("search", Event.class,
+                            Parameter.with("q", tag), Parameter.with("type", "event"), Parameter.with("fields", FIELDS_NAME));
+                    List<EventInfoEntity> eventInfoEntities = new ArrayList<EventInfoEntity>();
+
+                    eventConnections.forEach(events -> events
+                            .forEach(event -> {
+                                if (event != null){
+                                    EventInfoEntity eventInfoEntity = new EventInfoEntity(event.getId(), event.getName(), event.getDescription(), event.getAttendingCount(), tag);
+                                    String city = Optional.ofNullable(event)
+                                            .map(Event::getPlace)
+                                            .map(Place::getLocation)
+                                            .map(Location::getCity)
+                                            .orElse(UNKNOWN);
+
+                                    eventInfoEntity.setCity(city);
+                                    if (event.getStartTime() != null) {
+                                        eventInfoEntity.setDate(dateFormat.format(event.getStartTime()).toString());
+                                    } else {
+                                        eventInfoEntity.setDate(DEFAULT_DATE);
+                                    }
+                                    eventInfoEntities.add(eventInfoEntity);
+                                }
+                            }));
+                    return new EventsTagEntity(eventInfoEntities, tag);
+                });
+
+        allEventsTagEntity.collect().forEach(tagEntity -> {
+            System.out.println("Tag : " + tagEntity.getTag());
+            tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", DESC : " + eie.getDesc() + ", CITY : " + eie.getCity() + ", DATE : " + eie.getDate() + ", ATTENDCOUNT : " + eie.getAttendingCount()));
+        });
+
+
 
 
         /*Encoder<LogsEntity> logsEncoder = Encoders.bean(LogsEntity.class);

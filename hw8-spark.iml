@@ -11,7 +11,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: com.restfb:restfb:1.16.0" level="project" />
+    <orderEntry type="library" name="Maven: com.restfb:restfb:1.31.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.spark:spark-core_2.10:2.0.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.avro:avro-mapred:hadoop2:1.7.7" level="project" />
     <orderEntry type="library" name="Maven: org.apache.avro:avro-ipc:1.7.7" level="project" />
