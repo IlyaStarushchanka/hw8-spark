@@ -163,7 +163,7 @@ public class SparkApp {
 
         allEventsTagEntity.collect().forEach(tagEntity -> {
             System.out.println("Tag : " + tagEntity.getTag());
-            tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", DESC : " + eie.getDesc() + ", CITY : " + eie.getCity() + ", DATE : " + eie.getDate() + ", ATTENDCOUNT : " + eie.getAttendingCount()));
+            tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", CITY : " + eie.getCity() + ", DATE : " + eie.getDate() + ", ATTENDCOUNT : " + eie.getAttendingCount()));
         });
 
 
