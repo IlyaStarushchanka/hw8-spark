@@ -1,11 +1,12 @@
 package com.epam.bigdata.entity;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Created by Ilya_Starushchanka on 10/5/2016.
  */
-public class EventsTagEntity {
+public class EventsTagEntity implements Serializable{
 
     private String tag;
     private List<EventInfoEntity> allEvents;
