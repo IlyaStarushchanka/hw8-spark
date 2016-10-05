@@ -36,7 +36,7 @@ public class SparkApp {
     private static final String TOKEN = "EAACEdEose0cBACXvbcGbp23ccvwowAOxF5uk6mjwyiWZA8Nkvxo0wmjUj7DVdtyPRRKGsD1JUyr2uzCSTAZAjSA5GEwZCA29VFGM7oCyX7LaIhAmpjHyP8NBJthnANDWRQZB0y3uaFwsuD2ZByJNCD5UVfRXl6wXa6ZBw94jL2xwZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private static final String DEFAULT_DATE = "2000-01-01";
 
 
