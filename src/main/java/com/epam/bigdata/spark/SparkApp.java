@@ -158,6 +158,14 @@ public class SparkApp {
                     return new EventsTagEntity(eventInfoEntities, tag);
                 });
 
+        allEventsTagEntity.collect().forEach(tagEntity -> {
+            tagEntity.getAllEvents().forEach(eie -> {
+                if (eie.getCity().equals(UNKNOWN)) {
+                    System.out.println("TAG : " + tagEntity.getTag() + ",      CITY : " + eie.getCity() + ",      DATE : " + eie.getDate() + ",      ATTENDS : " + eie.getAttendingCount());
+                }
+            });
+        });
+
         /*allEventsTagEntity.collect().forEach(tagEntity -> {
             System.out.println("Tag : " + tagEntity.getTag());
             tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", CITY : "
