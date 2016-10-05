@@ -1,9 +1,6 @@
 package com.epam.bigdata.spark;
 
-import com.epam.bigdata.entity.CustomCityDateEntity;
-import com.epam.bigdata.entity.EventInfoEntity;
-import com.epam.bigdata.entity.EventsTagEntity;
-import com.epam.bigdata.entity.LogsEntity;
+import com.epam.bigdata.entity.*;
 import com.restfb.*;
 import com.restfb.types.Event;
 import com.restfb.types.Location;
@@ -33,7 +30,7 @@ public class SparkApp {
 
     private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final String TOKEN = "EAACEdEose0cBACXvbcGbp23ccvwowAOxF5uk6mjwyiWZA8Nkvxo0wmjUj7DVdtyPRRKGsD1JUyr2uzCSTAZAjSA5GEwZCA29VFGM7oCyX7LaIhAmpjHyP8NBJthnANDWRQZB0y3uaFwsuD2ZByJNCD5UVfRXl6wXa6ZBw94jL2xwZDZD";
+    private static final String TOKEN = "EAACEdEose0cBADBQ14E84qiKDor2CLU5GaKkNL9FWLdsekqSJMlULu0nfRYFIIV283AteUOyLQhSUmi75dCw1UQZCccFYZA4WekdF1MjIABZBIbxpVpNXCcC3dgydhM4on5hKxgAJEUwkKsCeu52BaOIupSPpsUwPoE9WuZCDQZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -107,7 +104,7 @@ public class SparkApp {
                 CustomCityDateEntity dc = new CustomCityDateEntity();
                 dc.setCity(logsEntity.getCity());
                 dc.setDate(logsEntity.getDate());
-                return new Tuple2<CustomCityDateEntity, Set<String>>(dc, new HashSet<String>(logsEntity.getTags()));
+                return new Tuple2<>(dc, new HashSet<>(logsEntity.getTags()));
             }
         });
         JavaPairRDD<CustomCityDateEntity, Set<String>> dayCityTagsPairs = customCityDateEntityPairs.reduceByKey(new Function2<Set<String>, Set<String>, Set<String>>() {
@@ -137,7 +134,7 @@ public class SparkApp {
                 .map(tag -> {
                     Connection<Event> eventConnections = facebookClient.fetchConnection("search", Event.class,
                             Parameter.with("q", tag), Parameter.with("type", "event"), Parameter.with("fields", FIELDS_NAME));
-                    List<EventInfoEntity> eventInfoEntities = new ArrayList<EventInfoEntity>();
+                    List<EventInfoEntity> eventInfoEntities = new ArrayList<>();
 
                     eventConnections.forEach(events -> events
                             .forEach(event -> {
@@ -161,12 +158,30 @@ public class SparkApp {
                     return new EventsTagEntity(eventInfoEntities, tag);
                 });
 
-        allEventsTagEntity.collect().forEach(tagEntity -> {
+        /*allEventsTagEntity.collect().forEach(tagEntity -> {
             System.out.println("Tag : " + tagEntity.getTag());
-            tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", CITY : " + eie.getCity() + ", DATE : " + eie.getDate() + ", ATTENDCOUNT : " + eie.getAttendingCount()));
+            tagEntity.getAllEvents().forEach(eie -> System.out.println("ID : " + eie.getId() + ", NAME : " + eie.getName() + ", CITY : "
+                    + eie.getCity() + ", DATE : " + eie.getDate() + ", ATTENDCOUNT : " + eie.getAttendingCount()));
+        });*/
+
+        JavaRDD<EventInfoEntity> allEvents = allEventsTagEntity.flatMap(tagEvent -> tagEvent.getAllEvents()
+                .iterator());
+
+
+        JavaPairRDD<TagCityDateEntity, EventInfoEntity> tagCityDateSameKeys = allEvents.mapToPair(eventIE -> {
+            TagCityDateEntity tagCityDateEntity = new TagCityDateEntity(eventIE.getTag(), eventIE.getCity(), eventIE.getDate());
+            return new Tuple2<>(tagCityDateEntity, eventIE);
         });
 
+        JavaPairRDD<TagCityDateEntity, EventInfoEntity> tagCityDatePairs = tagCityDateSameKeys.reduceByKey((eventIE1, eventIE2) -> {
+            EventInfoEntity eventInfoEntity = new EventInfoEntity();
+            eventInfoEntity.setAttendingCount(eventIE1.getAttendingCount() + eventIE2.getAttendingCount());
+            return eventInfoEntity;
+        });
 
+        tagCityDatePairs.collect().forEach(tuple -> {
+            System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount());
+        });
 
 
         /*Encoder<LogsEntity> logsEncoder = Encoders.bean(LogsEntity.class);
