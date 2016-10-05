@@ -1,9 +1,11 @@
 package com.epam.bigdata.entity;
 
+import java.io.Serializable;
+
 /**
  * Created by Ilya_Starushchanka on 10/5/2016.
  */
-public class EventInfoEntity {
+public class EventInfoEntity implements Serializable{
 
     private String id;
     private String name;
