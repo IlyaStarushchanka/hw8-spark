@@ -202,12 +202,15 @@ public class SparkApp {
                         .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
                         .filter(w -> !stopWords.contains(w))
                         .collect(toList());
-                Map<String, Long> topWords = words.stream()
-                        .map(String::toLowerCase)
-                        .collect(groupingBy(java.util.function.Function.identity(), counting()))
-                        .entrySet().stream()
-                        .sorted(Map.Entry.<String, Long>comparingByValue(reverseOrder()).thenComparing(Map.Entry.comparingByKey()))
-                        .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                Map<String, Long> topWords = new HashMap<String, Long>();
+                if (words != null) {
+                    topWords = words.stream()
+                            .map(String::toLowerCase)
+                            .collect(groupingBy(java.util.function.Function.identity(), counting()))
+                            .entrySet().stream()
+                            .sorted(Map.Entry.<String, Long>comparingByValue(reverseOrder()).thenComparing(Map.Entry.comparingByKey()))
+                            .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                }
                 System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : " + topWords);
             }
         });
