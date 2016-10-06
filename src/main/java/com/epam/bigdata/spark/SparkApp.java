@@ -21,6 +21,12 @@ import java.util.Optional;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static java.util.Collections.reverseOrder;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
 
 
 /**
@@ -28,9 +34,10 @@ import java.util.regex.Pattern;
  */
 public class SparkApp {
 
+    private static final List<String> stopWords = Arrays.asList("a", "and", "for", "to", "the", "you", "in");
     private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final String TOKEN = "EAACEdEose0cBADBQ14E84qiKDor2CLU5GaKkNL9FWLdsekqSJMlULu0nfRYFIIV283AteUOyLQhSUmi75dCw1UQZCccFYZA4WekdF1MjIABZBIbxpVpNXCcC3dgydhM4on5hKxgAJEUwkKsCeu52BaOIupSPpsUwPoE9WuZCDQZDZD";
+    private static final String TOKEN = "EAACEdEose0cBANcNgoxoZAkEAtZBJEmZCTabYaFPuIrAGO1ZBdRERPdJwpg9klaCgP7ZCF5I9NqnZBLRZAUw6d9LJVFYSFXN63diKxrPZANGmVnFM5V52ZBCqB2KrI4e92EqYCR8YZAz4BOrmoQk7lXEKW5jSklIlusr2q3utnAxlbkQZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -184,12 +191,24 @@ public class SparkApp {
         JavaPairRDD<TagCityDateEntity, EventInfoEntity> tagCityDatePairs = tagCityDateSameKeys.reduceByKey((eventIE1, eventIE2) -> {
             EventInfoEntity eventInfoEntity = new EventInfoEntity();
             eventInfoEntity.setAttendingCount(eventIE1.getAttendingCount() + eventIE2.getAttendingCount());
+            eventInfoEntity.setDesc(eventIE1.getDesc() + " " + eventIE2.getDesc());
             return eventInfoEntity;
         });
 
         tagCityDatePairs.collect().forEach(tuple -> {
             if (tuple._1.getCity().equals(UNKNOWN)) {
-                System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount());
+                List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
+                        .filter((s -> !s.isEmpty()))
+                        .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
+                        .filter(w -> !stopWords.contains(w))
+                        .collect(toList());
+                Map<String, Long> topWords = words.stream()
+                        .map(String::toLowerCase)
+                        .collect(groupingBy(java.util.function.Function.identity(), counting()))
+                        .entrySet().stream()
+                        .sorted(Map.Entry.<String, Long>comparingByValue(reverseOrder()).thenComparing(Map.Entry.comparingByKey()))
+                        .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : " + topWords);
             }
         });
 
