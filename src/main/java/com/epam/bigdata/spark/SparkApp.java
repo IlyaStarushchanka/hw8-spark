@@ -37,7 +37,7 @@ public class SparkApp {
     private static final List<String> stopWords = Arrays.asList("a", "and", "for", "to", "the", "you", "in");
     private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final String TOKEN = "EAACEdEose0cBANcNgoxoZAkEAtZBJEmZCTabYaFPuIrAGO1ZBdRERPdJwpg9klaCgP7ZCF5I9NqnZBLRZAUw6d9LJVFYSFXN63diKxrPZANGmVnFM5V52ZBCqB2KrI4e92EqYCR8YZAz4BOrmoQk7lXEKW5jSklIlusr2q3utnAxlbkQZDZD";
+    private static final String TOKEN = "EAACEdEose0cBAGdDQLcYXAtLRZBQOvH7Ja92S2aBXAllIvu7HqzWYebiyQeMsqY86yMR67pXzx5OR92vEBR7Q0rKnfZA5SeAjl3TZCz2ZBJZAXGvAK43kHZAa8KVw63jqiwZCqQWC9lRnZAON2ZAMDwizLnP6XcFxK8fZBkJcvuzXTMAZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
