@@ -1,6 +1,8 @@
 package com.epam.bigdata.entity;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Ilya_Starushchanka on 10/5/2016.
@@ -14,6 +16,7 @@ public class EventInfoEntity implements Serializable{
     private String city;
     private String date;
     private String tag;
+    private List<EventAttendsEntity> allAttends = new ArrayList<>();
 
     public EventInfoEntity(){}
 
@@ -80,5 +83,18 @@ public class EventInfoEntity implements Serializable{
     public void setTag(String tag) {
         this.tag = tag;
     }
+
+    public List<EventAttendsEntity> getAllAttends() {
+        return allAttends;
+    }
+
+    public void setAllAttends(List<EventAttendsEntity> allAttends) {
+        this.allAttends = allAttends;
+    }
+
+    public void addToAllAttends(EventAttendsEntity attend){
+        allAttends.add(attend);
+    }
+
 
 }

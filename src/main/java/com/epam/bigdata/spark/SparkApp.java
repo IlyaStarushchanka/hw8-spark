@@ -5,6 +5,7 @@ import com.restfb.*;
 import com.restfb.types.Event;
 import com.restfb.types.Location;
 import com.restfb.types.Place;
+import com.restfb.types.User;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -37,7 +38,7 @@ public class SparkApp {
     private static final List<String> stopWords = Arrays.asList("a", "and", "for", "to", "the", "you", "in");
     private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final String TOKEN = "EAACEdEose0cBAGdDQLcYXAtLRZBQOvH7Ja92S2aBXAllIvu7HqzWYebiyQeMsqY86yMR67pXzx5OR92vEBR7Q0rKnfZA5SeAjl3TZCz2ZBJZAXGvAK43kHZAa8KVw63jqiwZCqQWC9lRnZAON2ZAMDwizLnP6XcFxK8fZBkJcvuzXTMAZDZD";
+    private static final String TOKEN = "EAACEdEose0cBAMURI5QOrTMk9sN6TtoZAOYN2O2DhLd7f95PaQSMAFaj7FyBZBlD0wC6PM3RB3OibudGUHXSTJm72R2pmSjCBanta6CE3xMAaz0I3fk6eYXGfZBMnaujT5uVxOk1iJjGiOqmahwq3y5wwi7rDenpd6tOpLQ3QZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -165,13 +166,13 @@ public class SparkApp {
                     return new EventsTagEntity(eventInfoEntities, tag);
                 });
 
-        allEventsTagEntity.collect().forEach(tagEntity -> {
+        /*allEventsTagEntity.collect().forEach(tagEntity -> {
             tagEntity.getAllEvents().forEach(eie -> {
                 if (eie.getCity().equals(UNKNOWN)) {
                     System.out.println("TAG : " + tagEntity.getTag() + ",      CITY : " + eie.getCity() + ",      DATE : " + eie.getDate() + ",      ATTENDS : " + eie.getAttendingCount());
                 }
             });
-        });
+        });*/
 
         /*allEventsTagEntity.collect().forEach(tagEntity -> {
             System.out.println("Tag : " + tagEntity.getTag());
@@ -215,6 +216,47 @@ public class SparkApp {
                 System.out.println();
             }
         });
+
+        //TASK 3 --------------------------------------------------------------------------------------------------------------
+
+        JavaRDD<EventInfoEntity> allEventsWithAttends = allEvents.map(eventIE -> {
+            Connection<User> userConnections = facebookClient.fetchConnection(eventIE.getId() + "/attending", User.class);
+            EventInfoEntity eventInfoEntity = new EventInfoEntity();
+            userConnections.forEach(users -> users
+                    .forEach(user -> {
+                        if (user != null){
+                            EventAttendsEntity eventAttendsEntity = new EventAttendsEntity(user.getId(), user.getName());
+                            eventInfoEntity.addToAllAttends(eventAttendsEntity);
+                        }
+                    }));
+            return eventInfoEntity;
+        });
+
+        JavaRDD<EventAttendsEntity> allAttends = allEventsWithAttends.flatMap(eventIE -> eventIE.getAllAttends().iterator());
+
+        JavaPairRDD<EventAttendsEntity, Integer> allAttendsWithCount = allAttends.mapToPair(attend -> new Tuple2<>(attend, 1));
+
+        JavaPairRDD<EventAttendsEntity, Integer> allAttendsWithSameName = allAttendsWithCount.reduceByKey((i1,i2) -> i1+i2);
+
+        JavaRDD<EventAttendsEntity> attendInformation =
+                allAttendsWithSameName.map( t -> {
+                    t._1.setCount(t._2);
+                    return t._1;
+                });
+
+
+        JavaRDD<EventAttendsEntity> attendsLimit = attendInformation.sortBy(attend -> attend.getCount(), false, 1);
+        Encoder<EventAttendsEntity> eventAttendsEntity = Encoders.bean(EventAttendsEntity.class);
+        Dataset<EventAttendsEntity> attendsDataSet = spark.createDataset(attendsLimit.rdd(), eventAttendsEntity);
+
+        attendsDataSet.show(20);
+
+                /*reduceByKey((eventIE1, eventIE2) -> {
+            EventInfoEntity eventInfoEntity = new EventInfoEntity();
+            eventInfoEntity.setAttendingCount(eventIE1.getAttendingCount() + eventIE2.getAttendingCount());
+            eventInfoEntity.setDesc(eventIE1.getDesc() + " " + eventIE2.getDesc());
+            return eventInfoEntity;
+        });*/
 
 
         /*Encoder<LogsEntity> logsEncoder = Encoders.bean(LogsEntity.class);
