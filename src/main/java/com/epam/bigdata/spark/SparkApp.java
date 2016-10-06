@@ -220,7 +220,7 @@ public class SparkApp {
         //TASK 3 --------------------------------------------------------------------------------------------------------------
 
         JavaRDD<EventInfoEntity> allEventsWithAttends = allEvents.map(eventIE -> {
-            Connection<User> userConnections = facebookClient.fetchConnection(eventIE.getId() + "/attending", User.class, Parameter.with("limit",100));
+            Connection<User> userConnections = facebookClient.fetchConnection(eventIE.getId() + "/attending", User.class, Parameter.with("limit",1000));
             EventInfoEntity eventInfoEntity = new EventInfoEntity();
             userConnections.forEach(users -> users
                     .forEach(user -> {
