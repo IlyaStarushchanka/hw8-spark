@@ -212,8 +212,8 @@ public class SparkApp {
                                 .limit(10).forEachOrdered(s -> System.out.print(s.getKey() + ":" + s.getValue() + " "));
 
                 }
+                System.out.println();
             }
-            System.out.println();
         });
 
 
