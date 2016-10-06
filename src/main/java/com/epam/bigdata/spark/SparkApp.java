@@ -208,8 +208,9 @@ public class SparkApp {
                                 .map(String::toLowerCase)
                                 .collect(groupingBy(java.util.function.Function.identity(), counting()))
                                 .entrySet().stream()
-                                .sorted(Map.Entry.comparingByValue(reverseOrder()))
-                                .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                                .limit(10)
+                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 }
                 System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : " + topWords);
             }
