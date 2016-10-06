@@ -197,19 +197,19 @@ public class SparkApp {
 
         tagCityDatePairs.collect().forEach(tuple -> {
             if (tuple._1.getCity().equals(UNKNOWN)) {
-                List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
-                        .filter((s -> !s.isEmpty()))
-                        .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
-                        .filter(w -> !stopWords.contains(w))
-                        .collect(toList());
                 Map<String, Long> topWords = new HashMap<String, Long>();
-                if (words != null) {
+                if (tuple._2.getDesc() != null) {
+                    List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
+                            .filter((s -> !s.isEmpty()))
+                            .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
+                            .filter(w -> !stopWords.contains(w))
+                            .collect(toList());
                     topWords = words.stream()
-                            .map(String::toLowerCase)
-                            .collect(groupingBy(java.util.function.Function.identity(), counting()))
-                            .entrySet().stream()
-                            .sorted(Map.Entry.<String, Long>comparingByValue(reverseOrder()).thenComparing(Map.Entry.comparingByKey()))
-                            .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                .map(String::toLowerCase)
+                                .collect(groupingBy(java.util.function.Function.identity(), counting()))
+                                .entrySet().stream()
+                                .sorted(Map.Entry.<String, Long>comparingByValue(reverseOrder()).thenComparing(Map.Entry.comparingByValue()))
+                                .limit(10).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 }
                 System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : " + topWords);
             }
