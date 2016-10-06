@@ -197,13 +197,13 @@ public class SparkApp {
 
         tagCityDatePairs.collect().forEach(tuple -> {
             if (tuple._1.getCity().equals(UNKNOWN)) {
+                System.out.print("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : ");
                 if (tuple._2.getDesc() != null) {
                     List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
                             .filter((s -> !s.isEmpty()))
                             .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
                             .filter(w -> !stopWords.contains(w))
                             .collect(toList());
-                    System.out.print("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : ");
                     words.stream()
                                 .map(String::toLowerCase)
                                 .collect(groupingBy(java.util.function.Function.identity(), counting()))
