@@ -197,23 +197,23 @@ public class SparkApp {
 
         tagCityDatePairs.collect().forEach(tuple -> {
             if (tuple._1.getCity().equals(UNKNOWN)) {
-                Map<String, Long> topWords = new TreeMap<String, Long>();
                 if (tuple._2.getDesc() != null) {
                     List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
                             .filter((s -> !s.isEmpty()))
                             .filter(w -> !Pattern.compile("\\d+").matcher(w).matches())
                             .filter(w -> !stopWords.contains(w))
                             .collect(toList());
-                    topWords = words.stream()
+                    System.out.print("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : ");
+                    words.stream()
                                 .map(String::toLowerCase)
                                 .collect(groupingBy(java.util.function.Function.identity(), counting()))
                                 .entrySet().stream()
                                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                                .limit(10)
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                .limit(10).forEachOrdered(s -> System.out.print(s.getKey() + ":" + s.getValue() + " "));
+
                 }
-                System.out.println("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : " + topWords);
             }
+            System.out.println();
         });
 
 
