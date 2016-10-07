@@ -127,6 +127,9 @@ public class FacebookApp {
                 .flatMap(logsEntity -> logsEntity.getTags().iterator())
                 .distinct();
 
+        System.out.println("Unique tags: ");
+        uniqueTags.collect().forEach(tag -> System.out.println(tag));
+
         JavaRDD<EventsTagEntity> allEventsTagEntity = uniqueTags
                 .map(tag -> {
                     Connection<Event> eventConnections = facebookClient.fetchConnection("search", Event.class,
@@ -186,7 +189,7 @@ public class FacebookApp {
         });
 
         tagCityDatePairs.collect().forEach(tuple -> {
-            if (tuple._1.getCity().equals(UNKNOWN)) {
+            //if (tuple._1.getCity().equals(UNKNOWN)) {
                 System.out.print("TAG : " + tuple._1.getTag() + ",      CITY : " + tuple._1.getCity() + ",      DATE : " + tuple._1.getDate() + ",      ATTENDS : " + tuple._2.getAttendingCount() + ",        TOKEN_MAP : ");
                 if (tuple._2.getDesc() != null) {
                     List<String> words = Pattern.compile("\\W").splitAsStream(tuple._2.getDesc())
@@ -203,7 +206,7 @@ public class FacebookApp {
 
                 }
                 System.out.println();
-            }
+           // }
         });
 
         //TASK 3 --------------------------------------------------------------------------------------------------------------
