@@ -8,11 +8,9 @@ import com.restfb.types.Place;
 import com.restfb.types.User;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.PairFunction;
+import com.esotericsoftware.kryo.Kryo;
+import org.apache.spark.serializer.KryoRegistrator;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
@@ -22,9 +20,7 @@ import java.util.Optional;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -33,17 +29,28 @@ import static java.util.stream.Collectors.toList;
 /**
  * Created by Ilya_Starushchanka on 10/3/2016.
  */
-public class SparkApp {
+public class FacebookApp {
 
     private static final List<String> stopWords = Arrays.asList("a", "and", "for", "to", "the", "you", "in");
     private static final String UNKNOWN = "Unknown";
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final String TOKEN = "EAACEdEose0cBACeRP7QgoBiKOc2WHAV9NxzFIzOe3PCDK7JphIiZAteGFym6AJgLrh3wyfcyqAe0zZArGQvMZBAZCZBp3nCIRxwhOGPdUMZCgaN5WWZAMDFGkMBprrNb701vpfELl6sdZCACIYcrPfu8tplXv1nTR44G1qB1Klg6NuZBE0GC7sr0t";
+    private static final String TOKEN = "EAACEdEose0cBAJVKVrKVpfxBj2ub8HiF7mAHNZANxSNEVx3nXtFRTZAg2wbg4mKP1DoEFoSYEO5bDPB2TEZCuN5ADhNjf23ZCdbrbYJRgSNynD6NWWE188lZBj9IVknck84Rt4FEwZAFlAJdOUWD5jYMxDsfLKAZC0hQwgsBGvX8gZDZD";
     private static final FacebookClient facebookClient = new DefaultFacebookClient(TOKEN, Version.VERSION_2_5);
     private static final String FIELDS_NAME = "id,attending_count,place,name,description,start_time";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private static final String DEFAULT_DATE = "2000-01-01";
 
+
+    public static class CustomKryoRegistrator implements KryoRegistrator {
+        public void registerClasses(Kryo kryo) {
+            kryo.register(CustomCityDateEntity.class);
+            kryo.register(EventAttendsEntity.class);
+            kryo.register(EventInfoEntity.class);
+            kryo.register(EventsTagEntity.class);
+            kryo.register(LogsEntity.class);
+            kryo.register(TagCityDateEntity.class);
+        }
+    }
 
     public static void main(String[] args) throws Exception {
 
@@ -54,7 +61,9 @@ public class SparkApp {
 
         SparkSession spark = SparkSession
                 .builder()
-                .appName("JavaWordCount")
+                .appName("FacebookSparkApp")
+                .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                .config("spark.kryo.registrator", CustomKryoRegistrator.class.getName())
                 .getOrCreate();
 
         //TASK 1 ---------------------------------------------------------------------------------------------------------
@@ -67,61 +76,41 @@ public class SparkApp {
             String[] parts = line.split("\\s+");
             return new Tuple2<>(Long.parseLong(parts[0]), Arrays.asList(parts[1].split(",")));
         });
-        /*JavaPairRDD<Long, List<String>> tagsIdsPairs = tagsRDD.mapToPair(new PairFunction<String, Long, List<String>>() {
-            public Tuple2<Long, List<String>> call(String line) {
-                String[] parts = line.split("\\s+");
-                return new Tuple2<Long, List<String>>(Long.parseLong(parts[0]), Arrays.asList(parts[1].split(",")));
-            }
-        });*/
         Map<Long, List<String>> tagsMap = tagsIdsPairs.collectAsMap();
 
         //CITIES
         Dataset<String> dataCities = spark.read().textFile(args[2]);
         String headerCities = dataCities.first();
         JavaRDD<String> citiesRDD =dataCities.filter(x -> !x.equals(headerCities)).javaRDD();
-        JavaPairRDD<Integer, String> citiesIdsPairs = citiesRDD.mapToPair(new PairFunction<String, Integer, String>() {
-            public Tuple2<Integer, String> call(String line) {
-                String[] parts = line.split("\\s+");
-                return new Tuple2<Integer, String>(Integer.parseInt(parts[0]), parts[1]);
-            }
+
+        JavaPairRDD<Integer, String> citiesIdsPairs = citiesRDD.mapToPair(line -> {
+            String[] parts = line.split("\\s+");
+            return new Tuple2<>(Integer.parseInt(parts[0]), parts[1]);
         });
         Map<Integer, String> citiesMap = citiesIdsPairs.collectAsMap();
 
-        JavaRDD<LogsEntity> logsRDD = spark.read().textFile(args[0]).javaRDD().map(new Function<String, LogsEntity>() {
-            @Override
-            public LogsEntity call(String line) throws Exception {
-                String[] parts = line.split("\\s+");
-
-                LogsEntity logsEntity = new LogsEntity();
-
-                List<String> tagsList = tagsMap.get(Long.parseLong(parts[parts.length - 2]));
-                logsEntity.setTags(tagsList);
-
-                String city = citiesMap.get(Integer.parseInt(parts[parts.length - 15]));
-                logsEntity.setCity(city);
-
-                String dateInString = parts[1].substring(0, 8);
-                logsEntity.setDate(dateInString);
-                return logsEntity;
-            }
+        JavaRDD<LogsEntity> logsRDD = spark.read().textFile(args[0]).javaRDD().map(line -> {
+            String[] parts = line.split("\\s+");
+            LogsEntity logsEntity = new LogsEntity();
+            List<String> tagsList = tagsMap.get(Long.parseLong(parts[parts.length - 2]));
+            logsEntity.setTags(tagsList);
+            String city = citiesMap.get(Integer.parseInt(parts[parts.length - 15]));
+            logsEntity.setCity(city);
+            logsEntity.setDate(parts[1].substring(0, 8));
+            return logsEntity;
         });
 
-        JavaPairRDD<CustomCityDateEntity, Set<String>> customCityDateEntityPairs = logsRDD.mapToPair(new PairFunction<LogsEntity, CustomCityDateEntity, Set<String>>() {
-            @Override
-            public Tuple2<CustomCityDateEntity, Set<String>> call(LogsEntity logsEntity) throws Exception {
-                CustomCityDateEntity dc = new CustomCityDateEntity();
-                dc.setCity(logsEntity.getCity());
-                dc.setDate(logsEntity.getDate());
-                return new Tuple2<>(dc, new HashSet<>(logsEntity.getTags()));
-            }
+        JavaPairRDD<CustomCityDateEntity, Set<String>> customCityDateEntityPairs = logsRDD.mapToPair(logsEntity -> {
+            CustomCityDateEntity dc = new CustomCityDateEntity();
+            dc.setCity(logsEntity.getCity());
+            dc.setDate(logsEntity.getDate());
+            return new Tuple2<>(dc, new HashSet<>(logsEntity.getTags()));
         });
-        JavaPairRDD<CustomCityDateEntity, Set<String>> dayCityTagsPairs = customCityDateEntityPairs.reduceByKey(new Function2<Set<String>, Set<String>, Set<String>>() {
-            @Override
-            public Set<String> call(Set<String> i1, Set<String> i2) {
-                i1.addAll(i2);
-                return i1;
-            }
-            });
+
+        JavaPairRDD<CustomCityDateEntity, Set<String>> dayCityTagsPairs = customCityDateEntityPairs.reduceByKey((i1,i2) -> {
+            i1.addAll(i2);
+            return i1;
+        });
 
         List<Tuple2<CustomCityDateEntity, Set<String>>> output = dayCityTagsPairs.collect();
         for (Tuple2<CustomCityDateEntity,Set<String>> tuple : output) {
@@ -206,11 +195,11 @@ public class SparkApp {
                             .filter(w -> !stopWords.contains(w))
                             .collect(toList());
                     words.stream()
-                                .map(String::toLowerCase)
-                                .collect(groupingBy(java.util.function.Function.identity(), counting()))
-                                .entrySet().stream()
-                                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                                .limit(10).forEachOrdered(s -> System.out.print(s.getKey() + ":" + s.getValue() + " "));
+                            .map(String::toLowerCase)
+                            .collect(groupingBy(java.util.function.Function.identity(), counting()))
+                            .entrySet().stream()
+                            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                            .limit(10).forEachOrdered(s -> System.out.print(s.getKey() + ":" + s.getValue() + " "));
 
                 }
                 System.out.println();
@@ -244,57 +233,11 @@ public class SparkApp {
                     return t._1;
                 });
 
-
         JavaRDD<EventAttendsEntity> attendsLimit = attendInformation.sortBy(attend -> attend.getCount(), false, 1);
         Encoder<EventAttendsEntity> eventAttendsEntity = Encoders.bean(EventAttendsEntity.class);
         Dataset<EventAttendsEntity> attendsDataSet = spark.createDataset(attendsLimit.rdd(), eventAttendsEntity);
 
         attendsDataSet.show(20);
-
-                /*reduceByKey((eventIE1, eventIE2) -> {
-            EventInfoEntity eventInfoEntity = new EventInfoEntity();
-            eventInfoEntity.setAttendingCount(eventIE1.getAttendingCount() + eventIE2.getAttendingCount());
-            eventInfoEntity.setDesc(eventIE1.getDesc() + " " + eventIE2.getDesc());
-            return eventInfoEntity;
-        });*/
-
-
-        /*Encoder<LogsEntity> logsEncoder = Encoders.bean(LogsEntity.class);
-
-        Dataset<LogsEntity> logsDataSet = spark.createDataset(logsRDD.rdd(), logsEncoder);
-
-
-        logsDataSet.show();*/
-
-        /*JavaRDD<String> lines = spark.read().text(args[0]).javaRDD();
-
-        JavaRDD<String> words = lines.flatMap(new FlatMapFunction<String, String>() {
-            @Override
-            public Iterator<String> call(String s) {
-                return Arrays.asList(SPACE.split(s)).iterator();
-            }
-        });
-
-        JavaPairRDD<String, Integer> ones = words.mapToPair(
-                new PairFunction<String, String, Integer>() {
-                    @Override
-                    public Tuple2<String, Integer> call(String s) {
-                        return new Tuple2<>(s, 1);
-                    }
-                });
-
-        JavaPairRDD<String, Integer> counts = ones.reduceByKey(
-                new Function2<Integer, Integer, Integer>() {
-                    @Override
-                    public Integer call(Integer i1, Integer i2) {
-                        return i1 + i2;
-                    }
-                });
-
-        List<Tuple2<String, Integer>> output = counts.collect();
-        for (Tuple2<?,?> tuple : output) {
-            System.out.println(tuple._1() + ": " + tuple._2());
-        }*/
         spark.stop();
     }
 
